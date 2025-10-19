@@ -109,8 +109,15 @@ FetchContent_Declare(
     GIT_TAG v1.90.4
 )
 
+# Fetch tinygltf (header-only glTF loader)
+FetchContent_Declare(
+    tinygltf
+    GIT_REPOSITORY https://github.com/syoyo/tinygltf.git
+    GIT_TAG v2.9.3
+)
+
 # Make dependencies available
-FetchContent_MakeAvailable(glfw glad doctest glm imgui)
+FetchContent_MakeAvailable(glfw glad doctest glm imgui tinygltf)
 
 # ----- Setup external libraries ---------------------------------------------
 
@@ -237,6 +244,7 @@ foreach(APP_SOURCE ${APP_SOURCES})
         ${CMAKE_CURRENT_SOURCE_DIR}/include
         ${glfw_SOURCE_DIR}/include
         ${GLAD_OUTPUT_DIR}/include
+        ${tinygltf_SOURCE_DIR}
     )
     
     # Apply strict compiler flags
@@ -298,6 +306,7 @@ if(BUILD_TESTS)
             ${doctest_SOURCE_DIR}/doctest
             ${glfw_SOURCE_DIR}/include
             ${GLAD_OUTPUT_DIR}/include
+            ${tinygltf_SOURCE_DIR}
         )
         
         # Link libraries
