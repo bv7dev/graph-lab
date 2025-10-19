@@ -7,6 +7,11 @@
 
 namespace gfx {
 
+enum class GraphicsAPI : std::uint8_t {
+  OpenGL,
+  Vulkan
+};
+
 class WindowGLFW {
  public:
   WindowGLFW();
@@ -18,6 +23,7 @@ class WindowGLFW {
   WindowGLFW& operator=(WindowGLFW&&) = delete;
 
   bool initialize(uint32_t width, uint32_t height, const std::string& title, bool visible = true);
+  bool initializeWithAPI(uint32_t width, uint32_t height, const std::string& title, GraphicsAPI api, bool visible = true);
   [[nodiscard]] bool shouldClose() const;
   void pollEvents();
   void swapBuffers();
@@ -34,6 +40,7 @@ class WindowGLFW {
   uint32_t m_height;
   bool m_fullscreen;
   bool m_initialized;
+  GraphicsAPI m_api;
 
   void cleanup();
 };

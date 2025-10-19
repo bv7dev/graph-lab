@@ -7,7 +7,7 @@
 #include <gfx/window.hpp>
 #include <util/types.hpp>
 #include <util/glm.hpp>
-#include <gfx/mesh_renderer_opengl.hpp>
+#include <gfx/mesh_renderer_opengl.hpp>  // Switch back to OpenGL for WSL2 development
 
 namespace gfx {
 

@@ -35,6 +35,10 @@ class WindowTemplate {
 
   [[nodiscard]] GLFWwindow* getNativeWindow() const { return impl.getNativeWindow(); }
 
+  // Access to underlying implementation
+  [[nodiscard]] const ImplType& getImpl() const { return impl; }
+  [[nodiscard]] ImplType& getImpl() { return impl; }
+
  private:
   ImplType impl;
 };

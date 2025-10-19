@@ -7,11 +7,22 @@
 
 namespace gfx {
 
-WindowGLFW::WindowGLFW() : m_window(nullptr), m_width(0), m_height(0), m_fullscreen(false), m_initialized(false) {}
+WindowGLFW::WindowGLFW()
+    : m_window(nullptr),
+      m_width(0),
+      m_height(0),
+      m_fullscreen(false),
+      m_initialized(false),
+      m_api(GraphicsAPI::OpenGL) {}
 
 WindowGLFW::~WindowGLFW() { cleanup(); }
 
 auto WindowGLFW::initialize(uint32_t width, uint32_t height, const std::string& title, bool visible) -> bool {
+  return initializeWithAPI(width, height, title, GraphicsAPI::OpenGL, visible);  // Use OpenGL for WSL2
+}
+
+auto WindowGLFW::initializeWithAPI(uint32_t width, uint32_t height, const std::string& title, GraphicsAPI api,
+                                   bool visible) -> bool {
   if (m_initialized) {
     return false;
   }
@@ -20,9 +31,17 @@ auto WindowGLFW::initialize(uint32_t width, uint32_t height, const std::string& 
     return false;
   }
 
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-  glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+  m_api = api;
+
+  if (api == GraphicsAPI::OpenGL) {
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+  } else {
+    // Vulkan - tell GLFW not to create an OpenGL context
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+  }
+
   glfwWindowHint(GLFW_VISIBLE, visible ? GLFW_TRUE : GLFW_FALSE);
 
   m_window = glfwCreateWindow(static_cast<int>(width), static_cast<int>(height), title.c_str(), nullptr, nullptr);
@@ -31,10 +50,11 @@ auto WindowGLFW::initialize(uint32_t width, uint32_t height, const std::string& 
     return false;
   }
 
-  glfwMakeContextCurrent(m_window);
-
-  // Enable V-Sync (not working in WSL2)
-  glfwSwapInterval(1);
+  if (api == GraphicsAPI::OpenGL) {
+    glfwMakeContextCurrent(m_window);
+    // Enable V-Sync
+    glfwSwapInterval(1);
+  }
 
   glfwSetWindowUserPointer(m_window, this);
 

@@ -116,8 +116,22 @@ FetchContent_Declare(
     GIT_TAG v2.9.3
 )
 
+# Fetch vk-bootstrap (Vulkan initialization helper)
+FetchContent_Declare(
+    vk-bootstrap
+    GIT_REPOSITORY https://github.com/charles-lunarg/vk-bootstrap.git
+    GIT_TAG v1.3.290
+)
+
+# Fetch VulkanMemoryAllocator
+FetchContent_Declare(
+    VulkanMemoryAllocator
+    GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
+    GIT_TAG v3.1.0
+)
+
 # Make dependencies available
-FetchContent_MakeAvailable(glfw glad doctest glm imgui tinygltf)
+FetchContent_MakeAvailable(glfw glad doctest glm imgui tinygltf vk-bootstrap VulkanMemoryAllocator)
 
 # ----- Setup external libraries ---------------------------------------------
 
@@ -175,6 +189,14 @@ set_target_properties(glad_generated PROPERTIES
 # Find OpenGL
 find_package(OpenGL REQUIRED)
 
+# Find Vulkan
+find_package(Vulkan REQUIRED)
+if(NOT Vulkan_FOUND)
+    message(FATAL_ERROR "Vulkan not found. Please install Vulkan SDK from https://vulkan.lunarg.com/")
+endif()
+message(STATUS "Vulkan found: ${Vulkan_LIBRARY}")
+message(STATUS "Vulkan include: ${Vulkan_INCLUDE_DIRS}")
+
 # Create ImGui library
 add_library(imgui_lib
     ${imgui_SOURCE_DIR}/imgui.cpp
@@ -183,14 +205,16 @@ add_library(imgui_lib
     ${imgui_SOURCE_DIR}/imgui_widgets.cpp
     ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
     ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
+    ${imgui_SOURCE_DIR}/backends/imgui_impl_vulkan.cpp
 )
 
 target_include_directories(imgui_lib PUBLIC 
     ${imgui_SOURCE_DIR}
     ${imgui_SOURCE_DIR}/backends
+    ${Vulkan_INCLUDE_DIRS}
 )
 
-target_link_libraries(imgui_lib PUBLIC glfw glad_generated)
+target_link_libraries(imgui_lib PUBLIC glfw glad_generated ${Vulkan_LIBRARIES})
 
 # Disable strict warnings for ImGui
 target_compile_options(imgui_lib PRIVATE 
@@ -224,6 +248,28 @@ target_compile_options(tinygltf_impl PRIVATE
 
 target_compile_features(tinygltf_impl PRIVATE cxx_std_23)
 
+# Create VMA implementation library
+add_library(vma_impl STATIC ${CMAKE_CURRENT_SOURCE_DIR}/src/gfx/vma_implementation.cpp)
+
+target_include_directories(vma_impl PUBLIC
+    ${Vulkan_INCLUDE_DIRS}
+    ${vulkanmemoryallocator_SOURCE_DIR}/include
+)
+
+target_link_libraries(vma_impl PUBLIC ${Vulkan_LIBRARIES})
+
+# Disable strict warnings for VMA
+target_compile_options(vma_impl PRIVATE 
+    -Wno-unused-parameter 
+    -Wno-unused-function
+    -Wno-sign-compare 
+    -Wno-missing-field-initializers
+    -Wno-pedantic
+    -Wno-error
+)
+
+target_compile_features(vma_impl PRIVATE cxx_std_23)
+
 # ----- Project source files -------------------------------------------------
 
 # Automatically collect all source files from subdirectories (excluding apps)
@@ -231,10 +277,11 @@ file(GLOB_RECURSE LIBRARY_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
 )
 
-# Remove app files and gltf_loader.cpp from library sources
+# Remove app files and gltf_loader.cpp and vma_implementation.cpp from library sources
 file(GLOB APP_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/apps/*.cpp")
 list(REMOVE_ITEM LIBRARY_SOURCES ${APP_SOURCES})
 list(REMOVE_ITEM LIBRARY_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/util/gltf_loader.cpp")
+list(REMOVE_ITEM LIBRARY_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/gfx/vma_implementation.cpp")
 
 message(STATUS "Library sources found: ${LIBRARY_SOURCES}")
 
@@ -269,6 +316,9 @@ foreach(APP_SOURCE ${APP_SOURCES})
         ${glfw_SOURCE_DIR}/include
         ${GLAD_OUTPUT_DIR}/include
         ${tinygltf_SOURCE_DIR}
+        ${Vulkan_INCLUDE_DIRS}
+        ${vk-bootstrap_SOURCE_DIR}/src
+        ${VulkanMemoryAllocator_SOURCE_DIR}/include
     )
     
     # Apply strict compiler flags
@@ -279,11 +329,15 @@ foreach(APP_SOURCE ${APP_SOURCES})
     # Link libraries
     target_link_libraries(${APP_NAME} PRIVATE
         OpenGL::GL
+        ${Vulkan_LIBRARIES}
         glm::glm
         glad_generated
         tinygltf_impl
+        vma_impl
         imgui_lib
         glfw
+        vk-bootstrap::vk-bootstrap
+        GPUOpen::VulkanMemoryAllocator
     )
     
     # Set C++ standard
@@ -332,17 +386,24 @@ if(BUILD_TESTS)
             ${glfw_SOURCE_DIR}/include
             ${GLAD_OUTPUT_DIR}/include
             ${tinygltf_SOURCE_DIR}
+            ${Vulkan_INCLUDE_DIRS}
+            ${vk-bootstrap_SOURCE_DIR}/src
+            ${VulkanMemoryAllocator_SOURCE_DIR}/include
         )
         
         # Link libraries
         target_link_libraries(${TEST_NAME} PRIVATE
             doctest::doctest
             OpenGL::GL
+            ${Vulkan_LIBRARIES}
             glm::glm
             glad_generated
             tinygltf_impl
+            vma_impl
             imgui_lib
             glfw
+            vk-bootstrap::vk-bootstrap
+            GPUOpen::VulkanMemoryAllocator
         )
         
         # Set C++ standard
