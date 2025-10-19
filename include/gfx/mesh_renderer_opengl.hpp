@@ -39,9 +39,11 @@ class MeshRendererOpenGL : public RendererOpenGL {
 
  private:
   uint32_t m_meshShaderProgram;
+  uint32_t m_pointShaderProgram;
 
   void cleanup();
   bool loadMeshShaders();
+  bool loadPointShaders();
 };
 
 }  // namespace gfx

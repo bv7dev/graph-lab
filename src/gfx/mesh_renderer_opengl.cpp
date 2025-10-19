@@ -40,7 +40,48 @@ void main() {
 }
 )";
 
-MeshRendererOpenGL::MeshRendererOpenGL() : m_meshShaderProgram(0) {}
+// Point shader for rendering smooth circular points
+const std::string POINT_VERTEX_SHADER = R"(
+#version 330 core
+layout (location = 0) in vec3 aPosition;
+layout (location = 1) in vec4 aColor;
+
+uniform mat4 uMVP;
+
+out vec4 vertexColor;
+
+void main() {
+    gl_Position = uMVP * vec4(aPosition, 1.0);
+    vertexColor = aColor;
+}
+)";
+
+const std::string POINT_FRAGMENT_SHADER = R"(
+#version 330 core
+in vec4 vertexColor;
+out vec4 FragColor;
+
+uniform vec4 uTint;
+
+void main() {
+    // Calculate distance from center of point sprite
+    vec2 coord = gl_PointCoord - vec2(0.5);
+    float dist = length(coord);
+    
+    // Discard fragments outside the circle
+    if (dist > 0.5) {
+        discard;
+    }
+    
+    // Smooth antialiasing at the edge
+    float alpha = 1.0 - smoothstep(0.4, 0.5, dist);
+    
+    FragColor = vertexColor * uTint;
+    FragColor.a *= alpha;
+}
+)";
+
+MeshRendererOpenGL::MeshRendererOpenGL() : m_meshShaderProgram(0), m_pointShaderProgram(0) {}
 
 MeshRendererOpenGL::~MeshRendererOpenGL() { cleanup(); }
 
@@ -49,10 +90,18 @@ void MeshRendererOpenGL::cleanup() {
     glDeleteProgram(m_meshShaderProgram);
     m_meshShaderProgram = 0;
   }
+  if (m_pointShaderProgram) {
+    glDeleteProgram(m_pointShaderProgram);
+    m_pointShaderProgram = 0;
+  }
 }
 
 bool MeshRendererOpenGL::loadMeshShaders() {
   return createShaderProgram(MESH_VERTEX_SHADER, MESH_FRAGMENT_SHADER, m_meshShaderProgram);
+}
+
+bool MeshRendererOpenGL::loadPointShaders() {
+  return createShaderProgram(POINT_VERTEX_SHADER, POINT_FRAGMENT_SHADER, m_pointShaderProgram);
 }
 
 MeshGPU MeshRendererOpenGL::uploadMesh(const Mesh3D& mesh) {
@@ -254,23 +303,31 @@ void MeshRendererOpenGL::drawMeshEdges(const MeshGPU& meshGPU, const glm::mat4& 
 
 void MeshRendererOpenGL::drawMeshPoints(const MeshGPU& meshGPU, const glm::mat4& mvp, const Color& tint,
                                         float pointSize) {
-  if (!meshGPU.hasPoints() || (m_meshShaderProgram == 0 && !const_cast<MeshRendererOpenGL*>(this)->loadMeshShaders())) {
+  if (!meshGPU.hasPoints() ||
+      (m_pointShaderProgram == 0 && !const_cast<MeshRendererOpenGL*>(this)->loadPointShaders())) {
     return;
   }
 
-  useShader(m_meshShaderProgram);
+  useShader(m_pointShaderProgram);
 
   // Set MVP matrix
-  int mvpLoc = glGetUniformLocation(m_meshShaderProgram, "uMVP");
+  int mvpLoc = glGetUniformLocation(m_pointShaderProgram, "uMVP");
   if (mvpLoc != -1) {
     glUniformMatrix4fv(mvpLoc, 1, GL_FALSE, glm::value_ptr(mvp));
   }
 
   // Set tint color
-  setUniformColor(m_meshShaderProgram, tint);
+  setUniformColor(m_pointShaderProgram, tint);
 
   // Enable depth testing for proper 3D rendering
   glEnable(GL_DEPTH_TEST);
+
+  // Enable blending for smooth antialiased circles
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+  // Enable point sprite mode for gl_PointCoord
+  glEnable(GL_PROGRAM_POINT_SIZE);
 
   // Set point size
   glPointSize(pointSize);
@@ -282,6 +339,8 @@ void MeshRendererOpenGL::drawMeshPoints(const MeshGPU& meshGPU, const glm::mat4&
 
   // Reset state
   glPointSize(1.0f);
+  glDisable(GL_PROGRAM_POINT_SIZE);
+  glDisable(GL_BLEND);
   glDisable(GL_DEPTH_TEST);
 }
 
