@@ -1,0 +1,5 @@
+# Python development tools for this project
+# Managed by scripts/dev.sh
+
+# Linting via clangd
+clangd-tidy==1.1.0.post2

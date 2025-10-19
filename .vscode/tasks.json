@@ -1,0 +1,144 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build-debug",
+            "type": "shell",
+            "command": "./scripts/dev.sh",
+            "args": [
+                "debug",
+                "${input:buildTarget}"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": "$gcc"
+        },
+        {
+            "label": "build-debug-current",
+            "type": "shell",
+            "command": "bash",
+            "args": [
+                "-c",
+                "if [[ '${relativeFile}' == src/apps/*.cpp ]]; then ./scripts/dev.sh debug '${fileBasenameNoExtension}'; else ./scripts/dev.sh debug; fi"
+            ],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": "$gcc"
+        },
+        {
+            "label": "build-release",
+            "type": "shell",
+            "command": "./scripts/dev.sh",
+            "args": [
+                "release",
+                "${input:buildTarget}"
+            ],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": "$gcc"
+        },
+        {
+            "label": "run-current",
+            "type": "shell",
+            "command": "bash",
+            "args": [
+                "-c",
+                "if [[ '${relativeFile}' == src/apps/*.cpp ]]; then ./scripts/dev.sh run '${fileBasenameNoExtension}'; elif [[ '${relativeFile}' == tests/test_*.cpp ]]; then ./build/'${fileBasenameNoExtension}'; else echo 'Open an app file (src/apps/*.cpp) or test file (tests/test_*.cpp) to run it'; fi"
+            ],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "run-tests",
+            "type": "shell",
+            "command": "./scripts/dev.sh",
+            "args": [
+                "test"
+            ],
+            "group": "test",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": "$gcc"
+        },
+        {
+            "label": "format-code",
+            "type": "shell",
+            "command": "./scripts/dev.sh",
+            "args": [
+                "format"
+            ],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "lint-code",
+            "type": "shell",
+            "command": "./scripts/dev.sh",
+            "args": [
+                "lint"
+            ],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "clean-build",
+            "type": "shell",
+            "command": "./scripts/dev.sh",
+            "args": [
+                "clean"
+            ],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            }
+        }
+    ],
+    "inputs": [
+        {
+            "id": "buildTarget",
+            "type": "promptString",
+            "description": "Target to build (leave empty for all targets, or type app name like 'demo2d')",
+            "default": ""
+        }
+    ]
+}

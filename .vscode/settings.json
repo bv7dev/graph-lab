@@ -1,0 +1,29 @@
+{
+    "terminal.integrated.defaultProfile.linux": "zsh",
+    "editor.formatOnSave": true,
+    // "C_Cpp.default.configurationProvider": "llvm-vs-code-extensions.vscode-clangd",
+    "C_Cpp.intelliSenseEngine": "disabled",
+    "files.associations": {
+        "*.cpp": "cpp",
+        "*.hpp": "cpp",
+        "*.h": "cpp"
+    },
+    "[cpp]": {
+        "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd"
+    },
+    "files.exclude": {
+        "**/.cache": true,
+        "**/.vscode": true,
+        "**/.devtools": true,
+        "**/.clangd": true,
+        "**/.clang-format": true,
+        "**/.gitignore": true,
+        "**/compile_commands.json": true,
+        "**/CMakeLists.txt": true,
+        "**/scripts": true,
+        "**/build": true,
+        "**/.git": true,
+        "**/imgui.ini": true,
+        "**/LICENSE": true,
+    }
+}
