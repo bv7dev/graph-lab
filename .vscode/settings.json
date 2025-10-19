@@ -1,8 +1,8 @@
 {
     "terminal.integrated.defaultProfile.linux": "zsh",
     "editor.formatOnSave": true,
-    // "C_Cpp.default.configurationProvider": "llvm-vs-code-extensions.vscode-clangd",
     "C_Cpp.intelliSenseEngine": "disabled",
+    "C_Cpp.errorSquiggles": "disabled",
     "files.associations": {
         "*.cpp": "cpp",
         "*.hpp": "cpp",
