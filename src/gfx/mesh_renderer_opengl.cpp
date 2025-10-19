@@ -145,6 +145,37 @@ MeshGPU MeshRendererOpenGL::uploadMesh(const Mesh3D& mesh) {
     }
   }
 
+  // Build vertex data for points (all vertices)
+  if (!mesh.vertices.empty()) {
+    std::vector<float> pointData;
+    for (const auto& v : mesh.vertices) {
+      pointData.insert(pointData.end(),
+                       {v.position.x, v.position.y, v.position.z, v.color.r, v.color.g, v.color.b, v.color.a});
+    }
+
+    if (!pointData.empty()) {
+      // Upload point data to GPU
+      glGenVertexArrays(1, &meshGPU.pointVao);
+      glGenBuffers(1, &meshGPU.pointVbo);
+      glBindVertexArray(meshGPU.pointVao);
+      glBindBuffer(GL_ARRAY_BUFFER, meshGPU.pointVbo);
+      glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(pointData.size() * sizeof(float)), pointData.data(),
+                   GL_STATIC_DRAW);
+
+      // Position attribute (vec3)
+      glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 7 * sizeof(float), nullptr);
+      glEnableVertexAttribArray(0);
+
+      // Color attribute (vec4)
+      glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 7 * sizeof(float), reinterpret_cast<void*>(3 * sizeof(float)));
+      glEnableVertexAttribArray(1);
+
+      glBindVertexArray(0);
+
+      meshGPU.pointVertexCount = static_cast<uint32_t>(pointData.size() / 7);
+    }
+  }
+
   return meshGPU;
 }
 
@@ -221,6 +252,39 @@ void MeshRendererOpenGL::drawMeshEdges(const MeshGPU& meshGPU, const glm::mat4& 
   glDisable(GL_DEPTH_TEST);
 }
 
+void MeshRendererOpenGL::drawMeshPoints(const MeshGPU& meshGPU, const glm::mat4& mvp, const Color& tint,
+                                        float pointSize) {
+  if (!meshGPU.hasPoints() || (m_meshShaderProgram == 0 && !const_cast<MeshRendererOpenGL*>(this)->loadMeshShaders())) {
+    return;
+  }
+
+  useShader(m_meshShaderProgram);
+
+  // Set MVP matrix
+  int mvpLoc = glGetUniformLocation(m_meshShaderProgram, "uMVP");
+  if (mvpLoc != -1) {
+    glUniformMatrix4fv(mvpLoc, 1, GL_FALSE, glm::value_ptr(mvp));
+  }
+
+  // Set tint color
+  setUniformColor(m_meshShaderProgram, tint);
+
+  // Enable depth testing for proper 3D rendering
+  glEnable(GL_DEPTH_TEST);
+
+  // Set point size
+  glPointSize(pointSize);
+
+  // Draw the points
+  glBindVertexArray(meshGPU.pointVao);
+  glDrawArrays(GL_POINTS, 0, static_cast<GLsizei>(meshGPU.pointVertexCount));
+  glBindVertexArray(0);
+
+  // Reset state
+  glPointSize(1.0f);
+  glDisable(GL_DEPTH_TEST);
+}
+
 void MeshRendererOpenGL::freeMesh(MeshGPU& meshGPU) {
   if (meshGPU.vao) {
     glDeleteVertexArrays(1, &meshGPU.vao);
@@ -235,6 +299,13 @@ void MeshRendererOpenGL::freeMesh(MeshGPU& meshGPU) {
     meshGPU.edgeVao = 0;
     meshGPU.edgeVbo = 0;
     meshGPU.edgeVertexCount = 0;
+  }
+  if (meshGPU.pointVao) {
+    glDeleteVertexArrays(1, &meshGPU.pointVao);
+    glDeleteBuffers(1, &meshGPU.pointVbo);
+    meshGPU.pointVao = 0;
+    meshGPU.pointVbo = 0;
+    meshGPU.pointVertexCount = 0;
   }
 }
 

@@ -31,6 +31,10 @@ class MeshRendererOpenGL : public RendererOpenGL {
   void drawMeshEdges(const MeshGPU& meshGPU, const glm::mat4& mvp, const Color& tint = Color(1.0f, 1.0f, 1.0f, 1.0f),
                      float lineWidth = 1.0f);
 
+  // Draw vertices from the mesh as points
+  void drawMeshPoints(const MeshGPU& meshGPU, const glm::mat4& mvp, const Color& tint = Color(1.0f, 1.0f, 1.0f, 1.0f),
+                      float pointSize = 1.0f);
+
   static void freeMesh(MeshGPU& meshGPU);
 
  private:

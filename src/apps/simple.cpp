@@ -22,7 +22,7 @@ int main() {
   graphMesh.vertices.emplace_back(0.0f, 1.0f, 0.0f, util::Color(0.0f, 0.0f, 1.0f, 1.0f));    // Top (blue)
   graphMesh.vertices.emplace_back(1.0f, 1.5f, 0.0f, util::Color(1.0f, 1.0f, 0.0f, 1.0f));    // Extra vertex (yellow)
 
-  graphMesh.addFace(0, 1, 1);
+  graphMesh.addFace(0, 1, 2);
 
   graphMesh.addEdge(0, 3);
 
@@ -64,6 +64,7 @@ int main() {
 
     renderer.drawMesh(graphGPU, mvp, util::Color(1.0f, 1.0f, 1.0f, 1.0f), false);
     renderer.drawMeshEdges(graphGPU, mvp, util::Color(1.0f, 1.0f, 0.0f, 1.0f), 2.0f);
+    renderer.drawMeshPoints(graphGPU, mvp, util::Color(1.0f, 1.0f, 1.0f, 1.0f), 8.0f);
 
     renderer.drawCircle(100, 200, 20, util::Color(1.0, 1.0, 1.0, 1.0), true);
 

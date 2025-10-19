@@ -89,8 +89,14 @@ struct MeshGPU {
   uint32_t edgeVbo = 0;
   uint32_t edgeVertexCount = 0;
 
+  // Separate VAO/VBO for points (vertices)
+  uint32_t pointVao = 0;
+  uint32_t pointVbo = 0;
+  uint32_t pointVertexCount = 0;
+
   [[nodiscard]] bool isValid() const { return vao != 0; }
   [[nodiscard]] bool hasEdges() const { return edgeVao != 0 && edgeVertexCount > 0; }
+  [[nodiscard]] bool hasPoints() const { return pointVao != 0 && pointVertexCount > 0; }
 };
 
 }  // namespace util
