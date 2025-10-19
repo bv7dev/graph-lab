@@ -5,6 +5,7 @@
 #include <thread>
 #include <vector>
 #include <chrono>
+#include <cstddef>
 
 #include <imgui.h>
 
@@ -17,7 +18,7 @@
 
 int main(int argc, char** argv) {
   // Default model path
-  std::string modelPath = "assets/models/cube.gltf";
+  std::string modelPath = "assets/models/DamagedHelmet.glb";
 
   // Allow specifying model path as command line argument
   if (argc > 1) {
@@ -63,6 +64,7 @@ int main(int argc, char** argv) {
   float cameraAngle = 0.0f;
   float cameraHeight = 0.0f;
   float modelRotationY = 0.0f;
+  float modelRotationX = 0.0f;  // For pitch adjustment
   bool autoRotate = true;
   bool showWireframe = false;
   bool showEdges = false;
@@ -75,6 +77,7 @@ int main(int argc, char** argv) {
   float lightDistance = 10.0f;
   float lightAngle = 45.0f;
   float lightHeight = 5.0f;
+  float lightIntensity = 5.0f;  // Brighter lighting
   util::Color lightColor(1.0f, 1.0f, 1.0f, 1.0f);
 
   while (!window.shouldClose()) {
@@ -99,8 +102,9 @@ int main(int argc, char** argv) {
     ImGui::Text("Model Controls");
     ImGui::Checkbox("Auto Rotate", &autoRotate);
     if (!autoRotate) {
-      ImGui::SliderFloat("Rotation", &modelRotationY, 0.0f, 360.0f);
+      ImGui::SliderFloat("Rotation Y", &modelRotationY, 0.0f, 360.0f);
     }
+    ImGui::SliderFloat("Pitch", &modelRotationX, -180.0f, 180.0f);
     ImGui::Separator();
 
     ImGui::Text("Rendering Options");
@@ -121,6 +125,7 @@ int main(int argc, char** argv) {
       ImGui::SliderFloat("Light Distance", &lightDistance, 5.0f, 50.0f);
       ImGui::SliderFloat("Light Angle", &lightAngle, 0.0f, 360.0f);
       ImGui::SliderFloat("Light Height", &lightHeight, -10.0f, 10.0f);
+      ImGui::SliderFloat("Light Intensity", &lightIntensity, 0.5f, 200.0f);
       ImGui::ColorEdit3("Light Color", &lightColor.r);
     }
 
@@ -150,7 +155,8 @@ int main(int argc, char** argv) {
 
     // Model transformation
     auto modelMatrix = glm::mat4(1.0f);
-    modelMatrix = glm::rotate(modelMatrix, glm::radians(modelRotationY), glm::vec3(0.0f, 1.0f, 0.0f));
+    modelMatrix = glm::rotate(modelMatrix, glm::radians(modelRotationX), glm::vec3(1.0f, 0.0f, 0.0f));  // Pitch
+    modelMatrix = glm::rotate(modelMatrix, glm::radians(modelRotationY), glm::vec3(0.0f, 1.0f, 0.0f));  // Yaw
 
     // Light position
     float lightX = lightDistance * std::sin(glm::radians(lightAngle));
@@ -189,7 +195,9 @@ int main(int argc, char** argv) {
           }
         }
 
-        renderer.drawMeshPBR(gpuMesh, modelMatrix, view, projection, material, cameraPos, lightPos, lightColor);
+        // Scale light color by intensity
+        util::Color intensifiedLight = lightColor * lightIntensity;
+        renderer.drawMeshPBR(gpuMesh, modelMatrix, view, projection, material, cameraPos, lightPos, intensifiedLight);
       } else {
         renderer.drawMesh(gpuMesh, mvp, util::Color(1.0f, 1.0f, 1.0f, 1.0f), showWireframe);
       }
