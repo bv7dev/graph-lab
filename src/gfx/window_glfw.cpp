@@ -32,6 +32,10 @@ auto WindowGLFW::initialize(uint32_t width, uint32_t height, const std::string& 
   }
 
   glfwMakeContextCurrent(m_window);
+
+  // Enable V-Sync (not working in WSL2)
+  glfwSwapInterval(1);
+
   glfwSetWindowUserPointer(m_window, this);
 
   m_width = width;

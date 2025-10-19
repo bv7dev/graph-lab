@@ -37,6 +37,7 @@ struct Vertex3D {
 struct Mesh2D {
   std::vector<Vertex2D> vertices;
   std::vector<uint32_t> faces;  // Triplets of vertex indices (triangle = 3 indices)
+  std::vector<uint32_t> edges;  // Pairs of vertex indices (line = 2 indices)
 
   Mesh2D() = default;
 
@@ -46,12 +47,19 @@ struct Mesh2D {
     faces.push_back(v2);
     faces.push_back(v3);
   }
+
+  // Helper to add a line edge
+  void addEdge(uint32_t v1, uint32_t v2) {
+    edges.push_back(v1);
+    edges.push_back(v2);
+  }
 };
 
 // Simple mesh structure for 3D rendering
 struct Mesh3D {
   std::vector<Vertex3D> vertices;
   std::vector<uint32_t> faces;  // Triplets of vertex indices (triangle = 3 indices)
+  std::vector<uint32_t> edges;  // Pairs of vertex indices (line = 2 indices)
 
   Mesh3D() = default;
 
@@ -60,6 +68,12 @@ struct Mesh3D {
     faces.push_back(v1);
     faces.push_back(v2);
     faces.push_back(v3);
+  }
+
+  // Helper to add a line edge
+  void addEdge(uint32_t v1, uint32_t v2) {
+    edges.push_back(v1);
+    edges.push_back(v2);
   }
 };
 
@@ -70,7 +84,13 @@ struct MeshGPU {
   uint32_t vbo = 0;
   uint32_t vertexCount = 0;
 
+  // Separate VAO/VBO for edges (lines)
+  uint32_t edgeVao = 0;
+  uint32_t edgeVbo = 0;
+  uint32_t edgeVertexCount = 0;
+
   [[nodiscard]] bool isValid() const { return vao != 0; }
+  [[nodiscard]] bool hasEdges() const { return edgeVao != 0 && edgeVertexCount > 0; }
 };
 
 }  // namespace util

@@ -59,6 +59,11 @@ class RendererTemplate {
     impl.drawMesh(meshGPU, mvp, tint, wireframe);
   }
 
+  void drawMeshEdges(const MeshGPU& meshGPU, const glm::mat4& mvp, const Color& tint = Color(1.0f, 1.0f, 1.0f, 1.0f),
+                     float lineWidth = 1.0f) {
+    impl.drawMeshEdges(meshGPU, mvp, tint, lineWidth);
+  }
+
   void freeMesh(MeshGPU& meshGPU) { impl.freeMesh(meshGPU); }
 
   void setColor(const Color& color) { impl.setColor(color); }

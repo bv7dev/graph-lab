@@ -27,6 +27,10 @@ class MeshRendererOpenGL : public RendererOpenGL {
   void drawMesh(const MeshGPU& meshGPU, const glm::mat4& mvp, const Color& tint = Color(1.0f, 1.0f, 1.0f, 1.0f),
                 bool wireframe = false);
 
+  // Draw edges from the mesh as lines
+  void drawMeshEdges(const MeshGPU& meshGPU, const glm::mat4& mvp, const Color& tint = Color(1.0f, 1.0f, 1.0f, 1.0f),
+                     float lineWidth = 1.0f);
+
   static void freeMesh(MeshGPU& meshGPU);
 
  private:
