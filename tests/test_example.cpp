@@ -1,14 +1,14 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <doctest/doctest.h>
 
-#include <example_lib.hpp>
+#include <util/types.hpp>
+#include <util/glm.hpp>
 
-TEST_CASE("testing the truth") { CHECK(true); }
-
-TEST_CASE("example add function") {
-  CHECK(add(1, 2) == 3);
-  CHECK(add(1.5, 2.5) == 4.0);
-  CHECK(add(1, 2.5) == 3.5);
+TEST_CASE("testing glm::vec3 addition") {
+  glm::vec3 a(1.0f, 2.0f, 3.0f);
+  glm::vec3 b(4.0f, 5.0f, 6.0f);
+  glm::vec3 c = a + b;
+  CHECK(c.x == doctest::Approx(5.0f));
+  CHECK(c.y == doctest::Approx(7.0f));
+  CHECK(c.z == doctest::Approx(9.0f));
 }
-
-TEST_CASE("example get_version function") { CHECK(get_version() == "0.1.0"); }

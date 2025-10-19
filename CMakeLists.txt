@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(
-    cppseed
+    graph-lab
     VERSION 0.1.0
-    DESCRIPTION "A C++23 project template"
+    DESCRIPTION "Visualizing graphs with OpenGL"
     LANGUAGES CXX C
 )
 
@@ -50,7 +50,7 @@ else()
 endif()
 
 
-# ----- External dependencies ------------------------------------------------
+# ----- Fetch External dependencies ------------------------------------------------
 
 # Fetch dependencies using FetchContent
 include(FetchContent)
@@ -64,16 +64,135 @@ set(FETCHCONTENT_BASE_DIR "${CMAKE_CURRENT_BINARY_DIR}/_deps" CACHE PATH "Base d
 # Enable parallel downloads
 set(FETCHCONTENT_PARALLEL ON CACHE BOOL "Enable parallel downloads for FetchContent")
 
+# Disable unnecessary GLFW features to speed up configuration and build
+set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(GLFW_INSTALL OFF CACHE BOOL "" FORCE)
+
+# Fetch GLFW
+FetchContent_Declare(
+    glfw
+    GIT_REPOSITORY https://github.com/glfw/glfw.git
+    GIT_TAG 3.4
+)
+
+# Fetch GLAD generator
+FetchContent_Declare(
+    glad
+    GIT_REPOSITORY https://github.com/Dav1dde/glad.git
+    GIT_TAG v0.1.36
+)
+
 # Fetch doctest
 FetchContent_Declare(
     doctest
     GIT_REPOSITORY https://github.com/doctest/doctest.git
-    GIT_TAG v2.4.12
+    GIT_TAG v2.4.11
+)
+
+# Disable unnecessary GLM features to speed up configuration
+set(GLM_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(GLM_BUILD_INSTALL OFF CACHE BOOL "" FORCE)
+
+# Fetch GLM (header-only, no build required)
+FetchContent_Declare(
+    glm
+    GIT_REPOSITORY https://github.com/g-truc/glm.git
+    GIT_TAG 1.0.1
+)
+
+# Fetch ImGui
+FetchContent_Declare(
+    imgui
+    GIT_REPOSITORY https://github.com/ocornut/imgui.git
+    GIT_TAG v1.90.4
 )
 
 # Make dependencies available
-FetchContent_MakeAvailable(doctest)
+FetchContent_MakeAvailable(glfw glad doctest glm imgui)
 
+# ----- Setup external libraries ---------------------------------------------
+
+# Disable strict warnings for GLFW (it has many unused parameters)
+target_compile_options(glfw PRIVATE 
+    -Wno-unused-parameter 
+    -Wno-sign-compare 
+    -Wno-missing-field-initializers 
+    -Wno-pedantic
+    -Wno-error
+)
+
+# Generate GLAD files for OpenGL 3.3 Core
+set(GLAD_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/glad")
+file(MAKE_DIRECTORY ${GLAD_OUTPUT_DIR})
+
+# Generate GLAD files using the glad generator (only if not already generated)
+if(NOT EXISTS "${GLAD_OUTPUT_DIR}/src/glad.c" OR NOT EXISTS "${GLAD_OUTPUT_DIR}/include/glad/glad.h")
+    # Only find Python when we need to generate GLAD files
+    find_package(Python3 REQUIRED COMPONENTS Interpreter)
+    
+    message(STATUS "Generating GLAD files...")
+    execute_process(
+        COMMAND ${Python3_EXECUTABLE} -m glad --generator=c --spec=gl --api=gl=3.3 --profile=core --out-path=${GLAD_OUTPUT_DIR}
+        WORKING_DIRECTORY ${glad_SOURCE_DIR}
+        RESULT_VARIABLE GLAD_GENERATION_RESULT
+    )
+
+    if(NOT GLAD_GENERATION_RESULT EQUAL 0)
+        message(FATAL_ERROR "Failed to generate GLAD files")
+    endif()
+    message(STATUS "GLAD files generated successfully")
+else()
+    message(STATUS "GLAD files already exist, skipping generation")
+endif()
+
+# Create GLAD library (C library)
+add_library(glad_generated
+    ${GLAD_OUTPUT_DIR}/src/glad.c
+)
+
+target_include_directories(glad_generated PUBLIC ${GLAD_OUTPUT_DIR}/include)
+
+# Set C standard for GLAD
+set_target_properties(glad_generated PROPERTIES
+    C_STANDARD 11
+    C_STANDARD_REQUIRED ON
+)
+
+# Disable strict warnings for GLAD (it has many function pointer conversions)
+set_target_properties(glad_generated PROPERTIES
+    COMPILE_FLAGS "-Wno-pedantic -Wno-error -Wno-unused-parameter -Wno-sign-compare -Wno-missing-field-initializers"
+)
+
+# Find OpenGL
+find_package(OpenGL REQUIRED)
+
+# Create ImGui library
+add_library(imgui_lib
+    ${imgui_SOURCE_DIR}/imgui.cpp
+    ${imgui_SOURCE_DIR}/imgui_draw.cpp
+    ${imgui_SOURCE_DIR}/imgui_tables.cpp
+    ${imgui_SOURCE_DIR}/imgui_widgets.cpp
+    ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
+    ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
+)
+
+target_include_directories(imgui_lib PUBLIC 
+    ${imgui_SOURCE_DIR}
+    ${imgui_SOURCE_DIR}/backends
+)
+
+target_link_libraries(imgui_lib PUBLIC glfw glad_generated)
+
+# Disable strict warnings for ImGui
+target_compile_options(imgui_lib PRIVATE 
+    -Wno-unused-parameter 
+    -Wno-sign-compare 
+    -Wno-missing-field-initializers
+    -Wno-pedantic
+    -Wno-error
+)
 
 # ----- Project source files -------------------------------------------------
 
@@ -116,6 +235,8 @@ foreach(APP_SOURCE ${APP_SOURCES})
     # Include directories
     target_include_directories(${APP_NAME} PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${glfw_SOURCE_DIR}/include
+        ${GLAD_OUTPUT_DIR}/include
     )
     
     # Apply strict compiler flags
@@ -125,7 +246,11 @@ foreach(APP_SOURCE ${APP_SOURCES})
     
     # Link libraries
     target_link_libraries(${APP_NAME} PRIVATE
-        doctest::doctest
+        OpenGL::GL
+        glm::glm
+        glad_generated
+        imgui_lib
+        glfw
     )
     
     # Set C++ standard
@@ -170,11 +295,19 @@ if(BUILD_TESTS)
         # Include directories
         target_include_directories(${TEST_NAME} PRIVATE 
             ${CMAKE_CURRENT_SOURCE_DIR}/include
+            ${doctest_SOURCE_DIR}/doctest
+            ${glfw_SOURCE_DIR}/include
+            ${GLAD_OUTPUT_DIR}/include
         )
         
-        # Link libraries (tests need all dependencies)
+        # Link libraries
         target_link_libraries(${TEST_NAME} PRIVATE
             doctest::doctest
+            OpenGL::GL
+            glm::glm
+            glad_generated
+            imgui_lib
+            glfw
         )
         
         # Set C++ standard
