@@ -24,6 +24,8 @@ struct Vertex2D {
 struct Vertex3D {
   glm::vec3 position{0.0f, 0.0f, 0.0f};
   Color color{0.0f, 0.0f, 0.0f, 1.0f};
+  glm::vec3 normal{0.0f, 0.0f, 0.0f};
+  glm::vec2 texCoord{0.0f, 0.0f};
 
   Vertex3D() = default;
 
@@ -60,6 +62,7 @@ struct Mesh3D {
   std::vector<Vertex3D> vertices;
   std::vector<uint32_t> faces;  // Triplets of vertex indices (triangle = 3 indices)
   std::vector<uint32_t> edges;  // Pairs of vertex indices (line = 2 indices)
+  int materialIndex = -1;       // Index into Model's materials array
 
   Mesh3D() = default;
 
@@ -75,6 +78,38 @@ struct Mesh3D {
     edges.push_back(v1);
     edges.push_back(v2);
   }
+};
+
+// Texture data structure
+struct Texture {
+  int width = 0;
+  int height = 0;
+  int channels = 0;
+  std::vector<unsigned char> data;
+
+  [[nodiscard]] bool isValid() const { return width > 0 && height > 0 && !data.empty(); }
+};
+
+// GPU texture handle
+struct TextureGPU {
+  uint32_t id = 0;
+  int width = 0;
+  int height = 0;
+  int channels = 0;
+
+  [[nodiscard]] bool isValid() const { return id != 0; }
+};
+
+// Structure for PBR material parameters
+struct PBRMaterial {
+  Color baseColor{1.0f, 1.0f, 1.0f, 1.0f};
+  float metallic = 0.0f;
+  float roughness = 0.5f;
+
+  // Texture IDs (0 means no texture)
+  uint32_t baseColorTexture = 0;
+  uint32_t metallicRoughnessTexture = 0;
+  uint32_t normalTexture = 0;
 };
 
 // GPU mesh handle - holds VAO/VBO for a mesh that's been uploaded to GPU

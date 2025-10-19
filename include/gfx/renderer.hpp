@@ -7,6 +7,7 @@
 #include <gfx/window.hpp>
 #include <util/types.hpp>
 #include <util/glm.hpp>
+#include <gfx/mesh_renderer_opengl.hpp>
 
 namespace gfx {
 
@@ -51,12 +52,23 @@ class RendererTemplate {
 
   void drawLines(const std::vector<Vertex2D>& vertices) { impl.drawLines(vertices); }
 
+  // Texture management
+  TextureGPU uploadTexture(const Texture& texture) { return impl.uploadTexture(texture); }
+
+  void freeTexture(TextureGPU& textureGPU) { impl.freeTexture(textureGPU); }
+
   // Unified mesh rendering API - upload once, draw many times (works for 2D and 3D)
   MeshGPU uploadMesh(const Mesh3D& mesh) { return impl.uploadMesh(mesh); }
 
   void drawMesh(const MeshGPU& meshGPU, const glm::mat4& mvp, const Color& tint = Color(1.0f, 1.0f, 1.0f, 1.0f),
                 bool wireframe = false) {
     impl.drawMesh(meshGPU, mvp, tint, wireframe);
+  }
+
+  void drawMeshPBR(const MeshGPU& meshGPU, const glm::mat4& model, const glm::mat4& view, const glm::mat4& projection,
+                   const PBRMaterial& material, const glm::vec3& cameraPos, const glm::vec3& lightPos,
+                   const Color& lightColor = Color(1.0f, 1.0f, 1.0f, 1.0f)) {
+    impl.drawMeshPBR(meshGPU, model, view, projection, material, cameraPos, lightPos, lightColor);
   }
 
   void drawMeshEdges(const MeshGPU& meshGPU, const glm::mat4& mvp, const Color& tint = Color(1.0f, 1.0f, 1.0f, 1.0f),

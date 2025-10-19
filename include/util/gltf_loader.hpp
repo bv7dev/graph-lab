@@ -26,6 +26,7 @@ struct Material {
 struct Model {
   std::vector<Mesh3D> meshes;
   std::vector<Material> materials;
+  std::vector<Texture> textures;
   std::string name;
 
   [[nodiscard]] bool isValid() const { return !meshes.empty(); }

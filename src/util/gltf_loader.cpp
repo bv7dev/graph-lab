@@ -49,6 +49,25 @@ std::optional<Model> loadGLTF(const std::string& filepath) {
   Model model;
   model.name = filepath;
 
+  // Load textures
+  for (const auto& gltfTexture : gltfModel.textures) {
+    if (gltfTexture.source < 0 || gltfTexture.source >= static_cast<int>(gltfModel.images.size())) {
+      continue;
+    }
+
+    const auto& gltfImage = gltfModel.images[gltfTexture.source];
+
+    Texture texture;
+    texture.width = gltfImage.width;
+    texture.height = gltfImage.height;
+    texture.channels = gltfImage.component;
+    texture.data = gltfImage.image;  // Copy image data
+
+    model.textures.push_back(texture);
+  }
+
+  std::println("Loaded {} texture(s)", model.textures.size());
+
   // Load materials
   for (const auto& gltfMat : gltfModel.materials) {
     Material mat;
@@ -76,6 +95,7 @@ std::optional<Model> loadGLTF(const std::string& filepath) {
   for (const auto& gltfMesh : gltfModel.meshes) {
     for (const auto& primitive : gltfMesh.primitives) {
       Mesh3D mesh;
+      mesh.materialIndex = primitive.material;
 
       // Get position accessor
       const auto& posAccessor = gltfModel.accessors[primitive.attributes.at("POSITION")];
@@ -85,6 +105,30 @@ std::optional<Model> loadGLTF(const std::string& filepath) {
       // Get position data
       const auto* positions =
           reinterpret_cast<const float*>(&posBuffer.data[posBufferView.byteOffset + posAccessor.byteOffset]);
+
+      // Get normal data if available
+      const float* normals = nullptr;
+      bool hasNormals = false;
+      if (primitive.attributes.contains("NORMAL")) {
+        const auto& normalAccessor = gltfModel.accessors[primitive.attributes.at("NORMAL")];
+        const auto& normalBufferView = gltfModel.bufferViews[normalAccessor.bufferView];
+        const auto& normalBuffer = gltfModel.buffers[normalBufferView.buffer];
+        normals =
+            reinterpret_cast<const float*>(&normalBuffer.data[normalBufferView.byteOffset + normalAccessor.byteOffset]);
+        hasNormals = true;
+      }
+
+      // Get texture coordinate data if available
+      const float* texCoords = nullptr;
+      bool hasTexCoords = false;
+      if (primitive.attributes.contains("TEXCOORD_0")) {
+        const auto& texCoordAccessor = gltfModel.accessors[primitive.attributes.at("TEXCOORD_0")];
+        const auto& texCoordBufferView = gltfModel.bufferViews[texCoordAccessor.bufferView];
+        const auto& texCoordBuffer = gltfModel.buffers[texCoordBufferView.buffer];
+        texCoords = reinterpret_cast<const float*>(
+            &texCoordBuffer.data[texCoordBufferView.byteOffset + texCoordAccessor.byteOffset]);
+        hasTexCoords = true;
+      }
 
       // Get color data if available
       const float* colors = nullptr;
@@ -106,14 +150,29 @@ std::optional<Model> loadGLTF(const std::string& filepath) {
 
       // Load vertices
       for (size_t i = 0; i < posAccessor.count; ++i) {
-        glm::vec3 pos(positions[i * 3 + 0], positions[i * 3 + 1], positions[i * 3 + 2]);
+        Vertex3D vertex;
 
-        Color color = materialColor;
-        if (hasColors) {
-          color = Color(colors[i * 4 + 0], colors[i * 4 + 1], colors[i * 4 + 2], colors[i * 4 + 3]);
+        // Position
+        vertex.position = glm::vec3(positions[i * 3 + 0], positions[i * 3 + 1], positions[i * 3 + 2]);
+
+        // Normal
+        if (hasNormals) {
+          vertex.normal = glm::vec3(normals[i * 3 + 0], normals[i * 3 + 1], normals[i * 3 + 2]);
         }
 
-        mesh.vertices.emplace_back(pos, color);
+        // Texture coordinates
+        if (hasTexCoords) {
+          vertex.texCoord = glm::vec2(texCoords[i * 2 + 0], texCoords[i * 2 + 1]);
+        }
+
+        // Color
+        if (hasColors) {
+          vertex.color = Color(colors[i * 4 + 0], colors[i * 4 + 1], colors[i * 4 + 2], colors[i * 4 + 3]);
+        } else {
+          vertex.color = materialColor;
+        }
+
+        mesh.vertices.push_back(vertex);
       }
 
       // Load indices

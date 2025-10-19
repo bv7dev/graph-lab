@@ -49,6 +49,15 @@ int main(int argc, char** argv) {
     gpuMeshes.push_back(renderer.uploadMesh(mesh));
   }
 
+  // Upload all textures to GPU
+  std::vector<util::TextureGPU> gpuTextures;
+  gpuTextures.reserve(model.textures.size());
+  for (const auto& texture : model.textures) {
+    gpuTextures.push_back(renderer.uploadTexture(texture));
+  }
+
+  std::println("Uploaded {} texture(s) to GPU", gpuTextures.size());
+
   // Camera settings
   float cameraDistance = 5.0f;
   float cameraAngle = 0.0f;
@@ -58,8 +67,15 @@ int main(int argc, char** argv) {
   bool showWireframe = false;
   bool showEdges = false;
   bool showPoints = false;
+  bool usePBR = true;
   float pointSize = 5.0f;
   float lineWidth = 1.0f;
+
+  // Lighting settings
+  float lightDistance = 10.0f;
+  float lightAngle = 45.0f;
+  float lightHeight = 5.0f;
+  util::Color lightColor(1.0f, 1.0f, 1.0f, 1.0f);
 
   while (!window.shouldClose()) {
     auto start_of_frame = std::chrono::high_resolution_clock::now();
@@ -88,6 +104,7 @@ int main(int argc, char** argv) {
     ImGui::Separator();
 
     ImGui::Text("Rendering Options");
+    ImGui::Checkbox("PBR Lighting", &usePBR);
     ImGui::Checkbox("Wireframe", &showWireframe);
     ImGui::Checkbox("Show Edges", &showEdges);
     if (showEdges) {
@@ -96,6 +113,15 @@ int main(int argc, char** argv) {
     ImGui::Checkbox("Show Points", &showPoints);
     if (showPoints) {
       ImGui::SliderFloat("Point Size", &pointSize, 1.0f, 20.0f);
+    }
+    ImGui::Separator();
+
+    if (usePBR) {
+      ImGui::Text("Lighting");
+      ImGui::SliderFloat("Light Distance", &lightDistance, 5.0f, 50.0f);
+      ImGui::SliderFloat("Light Angle", &lightAngle, 0.0f, 360.0f);
+      ImGui::SliderFloat("Light Height", &lightHeight, -10.0f, 10.0f);
+      ImGui::ColorEdit3("Light Color", &lightColor.r);
     }
 
     ImGui::End();
@@ -117,19 +143,56 @@ int main(int argc, char** argv) {
     // Setup view matrix (camera)
     float camX = cameraDistance * std::sin(glm::radians(cameraAngle));
     float camZ = cameraDistance * std::cos(glm::radians(cameraAngle));
-    glm::mat4 view = glm::lookAt(glm::vec3(camX, cameraHeight, camZ),  // Camera position
-                                 glm::vec3(0.0f, 0.0f, 0.0f),          // Look at origin
-                                 glm::vec3(0.0f, 1.0f, 0.0f));         // Up vector
+    glm::vec3 cameraPos(camX, cameraHeight, camZ);
+    glm::mat4 view = glm::lookAt(cameraPos,                     // Camera position
+                                 glm::vec3(0.0f, 0.0f, 0.0f),   // Look at origin
+                                 glm::vec3(0.0f, 1.0f, 0.0f));  // Up vector
 
     // Model transformation
     auto modelMatrix = glm::mat4(1.0f);
     modelMatrix = glm::rotate(modelMatrix, glm::radians(modelRotationY), glm::vec3(0.0f, 1.0f, 0.0f));
 
+    // Light position
+    float lightX = lightDistance * std::sin(glm::radians(lightAngle));
+    float lightZ = lightDistance * std::cos(glm::radians(lightAngle));
+    glm::vec3 lightPos(lightX, lightHeight, lightZ);
+
     glm::mat4 mvp = projection * view * modelMatrix;
 
     // Render all meshes
-    for (const auto& gpuMesh : gpuMeshes) {
-      renderer.drawMesh(gpuMesh, mvp, util::Color(1.0f, 1.0f, 1.0f, 1.0f), showWireframe);
+    for (size_t i = 0; i < gpuMeshes.size(); ++i) {
+      const auto& gpuMesh = gpuMeshes[i];
+      const auto& mesh = model.meshes[i];
+
+      if (usePBR) {
+        // Setup PBR material
+        util::PBRMaterial material;
+
+        // Get material from mesh
+        if (mesh.materialIndex >= 0 && mesh.materialIndex < static_cast<int>(model.materials.size())) {
+          const auto& srcMat = model.materials[mesh.materialIndex];
+          material.baseColor = srcMat.baseColor;
+          material.metallic = srcMat.metallic;
+          material.roughness = srcMat.roughness;
+
+          // Map texture indices to GPU texture IDs
+          if (srcMat.baseColorTextureIndex >= 0 &&
+              srcMat.baseColorTextureIndex < static_cast<int>(gpuTextures.size())) {
+            material.baseColorTexture = gpuTextures[srcMat.baseColorTextureIndex].id;
+          }
+          if (srcMat.metallicRoughnessTextureIndex >= 0 &&
+              srcMat.metallicRoughnessTextureIndex < static_cast<int>(gpuTextures.size())) {
+            material.metallicRoughnessTexture = gpuTextures[srcMat.metallicRoughnessTextureIndex].id;
+          }
+          if (srcMat.normalTextureIndex >= 0 && srcMat.normalTextureIndex < static_cast<int>(gpuTextures.size())) {
+            material.normalTexture = gpuTextures[srcMat.normalTextureIndex].id;
+          }
+        }
+
+        renderer.drawMeshPBR(gpuMesh, modelMatrix, view, projection, material, cameraPos, lightPos, lightColor);
+      } else {
+        renderer.drawMesh(gpuMesh, mvp, util::Color(1.0f, 1.0f, 1.0f, 1.0f), showWireframe);
+      }
 
       if (showEdges) {
         renderer.drawMeshEdges(gpuMesh, mvp, util::Color(0.0f, 1.0f, 1.0f, 1.0f), lineWidth);
@@ -151,6 +214,9 @@ int main(int argc, char** argv) {
   // Cleanup
   for (auto& gpuMesh : gpuMeshes) {
     renderer.freeMesh(gpuMesh);
+  }
+  for (auto& gpuTexture : gpuTextures) {
+    renderer.freeTexture(gpuTexture);
   }
 
   return 0;
