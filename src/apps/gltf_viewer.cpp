@@ -1,9 +1,10 @@
-#include <chrono>
 #include <cmath>
 #include <print>
+#include <ratio>
 #include <string>
 #include <thread>
 #include <vector>
+#include <chrono>
 
 #include <imgui.h>
 
@@ -121,7 +122,7 @@ int main(int argc, char** argv) {
                                  glm::vec3(0.0f, 1.0f, 0.0f));         // Up vector
 
     // Model transformation
-    glm::mat4 modelMatrix = glm::mat4(1.0f);
+    auto modelMatrix = glm::mat4(1.0f);
     modelMatrix = glm::rotate(modelMatrix, glm::radians(modelRotationY), glm::vec3(0.0f, 1.0f, 0.0f));
 
     glm::mat4 mvp = projection * view * modelMatrix;
