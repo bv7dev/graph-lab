@@ -201,6 +201,29 @@ target_compile_options(imgui_lib PRIVATE
     -Wno-error
 )
 
+# Create tinygltf wrapper library (header-only but with implementation in one file)
+# This allows us to disable warnings for the tinygltf implementation
+add_library(tinygltf_impl STATIC ${CMAKE_CURRENT_SOURCE_DIR}/src/util/gltf_loader.cpp)
+
+target_include_directories(tinygltf_impl PUBLIC 
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${tinygltf_SOURCE_DIR}
+)
+
+target_link_libraries(tinygltf_impl PUBLIC glm::glm)
+
+# Disable strict warnings for tinygltf and its embedded STB libraries
+target_compile_options(tinygltf_impl PRIVATE 
+    -Wno-unused-parameter 
+    -Wno-sign-compare 
+    -Wno-missing-field-initializers
+    -Wno-pedantic
+    -Wno-error
+    -Wno-stringop-overflow
+)
+
+target_compile_features(tinygltf_impl PRIVATE cxx_std_23)
+
 # ----- Project source files -------------------------------------------------
 
 # Automatically collect all source files from subdirectories (excluding apps)
@@ -208,9 +231,10 @@ file(GLOB_RECURSE LIBRARY_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
 )
 
-# Remove app files from library sources
+# Remove app files and gltf_loader.cpp from library sources
 file(GLOB APP_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/apps/*.cpp")
 list(REMOVE_ITEM LIBRARY_SOURCES ${APP_SOURCES})
+list(REMOVE_ITEM LIBRARY_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/util/gltf_loader.cpp")
 
 message(STATUS "Library sources found: ${LIBRARY_SOURCES}")
 
@@ -257,6 +281,7 @@ foreach(APP_SOURCE ${APP_SOURCES})
         OpenGL::GL
         glm::glm
         glad_generated
+        tinygltf_impl
         imgui_lib
         glfw
     )
@@ -315,6 +340,7 @@ if(BUILD_TESTS)
             OpenGL::GL
             glm::glm
             glad_generated
+            tinygltf_impl
             imgui_lib
             glfw
         )

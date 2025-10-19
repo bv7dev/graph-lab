@@ -22,6 +22,7 @@ Diagnostics:
       - cppcoreguidelines-pro-type-reinterpret-cast
       - cppcoreguidelines-pro-type-union-access
       - cppcoreguidelines-pro-type-vararg
+      - cppcoreguidelines-pro-bounds-pointer-arithmetic
       - modernize-use-trailing-return-type
       - modernize-avoid-c-arrays  
       - readability-uppercase-literal-suffix
@@ -32,6 +33,7 @@ Diagnostics:
       - readability-identifier-length
       - readability-convert-member-functions-to-static
       - readability-function-cognitive-complexity
+      - readability-math-missing-parentheses
       - bugprone-implicit-widening-of-multiplication-result
       - bugprone-easily-swappable-parameters
       - performance-type-promotion-in-math-fn

@@ -1,4 +1,5 @@
 #include <chrono>
+#include <cmath>
 #include <print>
 #include <string>
 #include <thread>
@@ -13,7 +14,7 @@
 #include <util/gltf_loader.hpp>
 #include <util/types.hpp>
 
-int main(int argc, char* argv[]) {
+int main(int argc, char** argv) {
   // Default model path
   std::string modelPath = "assets/models/cube.gltf";
 
@@ -42,6 +43,7 @@ int main(int argc, char* argv[]) {
 
   // Upload all meshes to GPU
   std::vector<util::MeshGPU> gpuMeshes;
+  gpuMeshes.reserve(model.meshes.size());
   for (const auto& mesh : model.meshes) {
     gpuMeshes.push_back(renderer.uploadMesh(mesh));
   }

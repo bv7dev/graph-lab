@@ -1,21 +1,17 @@
-#include <util/gltf_loader.hpp>
-
-#include <print>
+#include <optional>
+#include <cstddef>
 #include <cstdint>
+#include <string>
+#include <print>
 
-// Disable warnings for tinygltf and its embedded STB libraries
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wpedantic"
-#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
-#pragma GCC diagnostic ignored "-Wstringop-overflow"
-#pragma GCC diagnostic ignored "-Wunused-parameter"
+#include <util/gltf_loader.hpp>
+#include <util/types.hpp>
+#include <util/glm.hpp>
 
 #define TINYGLTF_IMPLEMENTATION
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <tiny_gltf.h>
-
-#pragma GCC diagnostic pop
 
 namespace util {
 
@@ -87,13 +83,13 @@ std::optional<Model> loadGLTF(const std::string& filepath) {
       const auto& posBuffer = gltfModel.buffers[posBufferView.buffer];
 
       // Get position data
-      const float* positions =
+      const auto* positions =
           reinterpret_cast<const float*>(&posBuffer.data[posBufferView.byteOffset + posAccessor.byteOffset]);
 
       // Get color data if available
       const float* colors = nullptr;
       bool hasColors = false;
-      if (primitive.attributes.find("COLOR_0") != primitive.attributes.end()) {
+      if (primitive.attributes.contains("COLOR_0")) {
         const auto& colorAccessor = gltfModel.accessors[primitive.attributes.at("COLOR_0")];
         const auto& colorBufferView = gltfModel.bufferViews[colorAccessor.bufferView];
         const auto& colorBuffer = gltfModel.buffers[colorBufferView.buffer];
