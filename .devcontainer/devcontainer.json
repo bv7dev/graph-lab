@@ -11,8 +11,12 @@
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [],
 
+	"containerEnv": {
+		"XDG_RUNTIME_DIR": "/tmp/runtime-vscode"
+	},
+
 	// Use 'postCreateCommand' to run commands after the container is created.
-	"postCreateCommand": "bash ./scripts/setup.sh",
+	"postCreateCommand": "mkdir -p /tmp/runtime-vscode && chmod 700 /tmp/runtime-vscode && bash ./scripts/setup.sh",
 	"customizations": {
 		"vscode": {
 			"extensions": [

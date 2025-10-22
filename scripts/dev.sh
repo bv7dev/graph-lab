@@ -284,8 +284,7 @@ run() {
     local AVAILABLE_TARGETS=()
     while IFS= read -r f; do
         # Extract basename without extension
-        local base
-        base="$(basename "$f" .cpp)"
+        local base="$(basename "$f" .cpp)"
         AVAILABLE_TARGETS+=("$base")
     done < <(find src/apps -maxdepth 1 -type f -name '*.cpp' 2>/dev/null | sort)
 
