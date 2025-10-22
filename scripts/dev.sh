@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env zsh
 
 # Simple C++ Project Developer Script
 # Usage: ./dev.sh [debug|release|clean|test|format|run|all]
@@ -6,7 +6,7 @@
 set -e
 
 # Get the directory where this script is located and cd to project root
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${(%):-%x}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 cd "$PROJECT_ROOT"
 
@@ -18,39 +18,10 @@ GREEN='\033[0;32m'
 RED='\033[0;31m'
 NC='\033[0m'
 
+source "$SCRIPT_DIR/devtools.sh"
+
 # Check if command exists
 command_exists() { command -v "$1" >/dev/null 2>&1; }
-
-# Ensure Python dev tools venv is set up
-ensure_dev_tools() {
-    local VENV_DIR=".devtools/venv"
-    local REQUIREMENTS=".devtools/requirements.txt"
-    
-    # Check if venv exists and is valid
-    if [ ! -f "$VENV_DIR/bin/python3" ]; then
-        echo "Setting up Python dev tools environment..."
-        python3 -m venv "$VENV_DIR"
-        "$VENV_DIR/bin/pip" install --upgrade pip > /dev/null 2>&1
-        "$VENV_DIR/bin/pip" install -r "$REQUIREMENTS"
-        echo "✓ Python dev tools installed"
-        echo ""
-    fi
-    
-    # Check if requirements have changed (simple hash check)
-    if [ -f "$VENV_DIR/.installed" ]; then
-        local OLD_HASH=$(cat "$VENV_DIR/.installed" 2>/dev/null || echo "")
-        local NEW_HASH=$(md5sum "$REQUIREMENTS" 2>/dev/null | cut -d' ' -f1 || echo "")
-        if [ "$OLD_HASH" != "$NEW_HASH" ]; then
-            echo "Dev tools requirements changed, updating..."
-            "$VENV_DIR/bin/pip" install -r "$REQUIREMENTS" --upgrade
-            echo "$NEW_HASH" > "$VENV_DIR/.installed"
-            echo "✓ Dev tools updated"
-            echo ""
-        fi
-    else
-        md5sum "$REQUIREMENTS" 2>/dev/null | cut -d' ' -f1 > "$VENV_DIR/.installed" 2>/dev/null || true
-    fi
-}
 
 # Clean build directory
 clean() {
@@ -67,21 +38,21 @@ clean() {
 # Configure and build for debug
 debug() {
     local TARGET="${1:-all}"
-    
+
     if [ "$TARGET" = "all" ]; then
         echo "Building all targets (debug)..."
     else
         echo "Building $TARGET (debug)..."
     fi
-    
+
     mkdir -p "$BUILD_DIR"
-    
+
     # Only reconfigure if CMakeLists.txt changed or build directory is missing CMakeCache.txt
     if [ ! -f "$BUILD_DIR/CMakeCache.txt" ] || [ CMakeLists.txt -nt "$BUILD_DIR/CMakeCache.txt" ]; then
         echo "Configuring..."
         cmake -S . -B "$BUILD_DIR" -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=ON
     fi
-    
+
     # Build specific target or all
     if [ "$TARGET" = "all" ]; then
         cmake --build "$BUILD_DIR" --parallel
@@ -95,28 +66,28 @@ debug() {
         fi
         cmake --build "$BUILD_DIR" --target "$TARGET" --parallel
     fi
-    
+
     ln -sf "$BUILD_DIR/compile_commands.json" compile_commands.json
 }
 
 # Configure and build for release
 release() {
     local TARGET="${1:-all}"
-    
+
     if [ "$TARGET" = "all" ]; then
         echo "Building all targets (release)..."
     else
         echo "Building $TARGET (release)..."
     fi
-    
+
     mkdir -p "$BUILD_DIR"
-    
+
     # Only reconfigure if CMakeLists.txt changed or build directory is missing CMakeCache.txt
     if [ ! -f "$BUILD_DIR/CMakeCache.txt" ] || [ CMakeLists.txt -nt "$BUILD_DIR/CMakeCache.txt" ]; then
         echo "Configuring..."
         cmake -S . -B "$BUILD_DIR" -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON
     fi
-    
+
     # Build specific target or all
     if [ "$TARGET" = "all" ]; then
         cmake --build "$BUILD_DIR" --parallel
@@ -130,7 +101,7 @@ release() {
         fi
         cmake --build "$BUILD_DIR" --target "$TARGET" --parallel
     fi
-    
+
     ln -sf "$BUILD_DIR/compile_commands.json" compile_commands.json
 }
 
@@ -149,10 +120,10 @@ format() {
         echo -e "${RED}clang-format not found${NC}"
         exit 1
     fi
-    
+
     local TARGET="${1:-all}"
     local FILES=()
-    
+
     case "$TARGET" in
         "all")
             echo "Formatting all source files..."
@@ -180,12 +151,12 @@ format() {
             fi
             ;;
     esac
-    
+
     if [ ${#FILES[@]} -eq 0 ]; then
         echo -e "${RED}No files found to format${NC}"
         return 1
     fi
-    
+
     echo "Formatting ${#FILES[@]} file(s)..."
     clang-format -i "${FILES[@]}"
     echo -e "${GREEN}✓ Formatted ${#FILES[@]} file(s)${NC}"
@@ -198,19 +169,19 @@ lint() {
         echo "compile_commands.json not found. Building first..."
         debug
     fi
-    
+
     # Ensure Python dev tools are installed
     ensure_dev_tools
-    
+
     # Use clangd-tidy from project venv
     local CLANGD_TIDY=".devtools/venv/bin/clangd-tidy"
-    
+
     if [ ! -f "$CLANGD_TIDY" ]; then
         echo -e "${RED}clangd-tidy not found in dev tools venv${NC}"
         echo "This shouldn't happen - try running: ./scripts/dev.sh install"
         return 1
     fi
-    
+
     # Find clangd from VS Code/Cursor extension
     local CLANGD=$(find ~/.vscode-server ~/.cursor-server -name "clangd" -type f -path "*/bin/clangd" 2>/dev/null | head -1)
     if [ -z "$CLANGD" ]; then
@@ -218,10 +189,10 @@ lint() {
         echo "Install the clangd extension in VS Code/Cursor"
         return 1
     fi
-    
+
     local TARGET="${1:-all}"
     local FILES=()
-    
+
     case "$TARGET" in
         "all")
             echo "Linting all source, header, and test files..."
@@ -250,38 +221,38 @@ lint() {
             fi
             ;;
     esac
-    
+
     if [ ${#FILES[@]} -eq 0 ]; then
         echo -e "${RED}No source files found${NC}"
         return 1
     fi
-    
+
     echo "Running clang-tidy on ${#FILES[@]} file(s) via clangd..."
     echo ""
-    
+
     # Run clangd-tidy with -j 1 (sequential) to avoid file locks
     # Stream output directly (don't capture to variable - that causes hangs)
     # Use tee to both display and save for counting
     local TMP_OUTPUT=$(mktemp)
     "$CLANGD_TIDY" --clangd-executable="$CLANGD" -j 1 "${FILES[@]}" < /dev/null 2>&1 | tee "$TMP_OUTPUT"
     local EXIT_CODE=${PIPESTATUS[0]}
-    
+
     # Count diagnostics from saved output
     local HINT_COUNT=$(grep -c "Hint:" "$TMP_OUTPUT" 2>/dev/null || true)
     local INFO_COUNT=$(grep -c "Information:" "$TMP_OUTPUT" 2>/dev/null || true)
     local WARN_COUNT=$(grep -c "Warning:" "$TMP_OUTPUT" 2>/dev/null || true)
     local ERROR_COUNT=$(grep -c "Error:" "$TMP_OUTPUT" 2>/dev/null || true)
-    
+
     # Ensure counts are numbers (grep -c returns 0 when no matches)
     HINT_COUNT=${HINT_COUNT:-0}
     INFO_COUNT=${INFO_COUNT:-0}
     WARN_COUNT=${WARN_COUNT:-0}
     ERROR_COUNT=${ERROR_COUNT:-0}
-    
+
     local TOTAL_ISSUES=$((HINT_COUNT + INFO_COUNT + WARN_COUNT + ERROR_COUNT))
-    
+
     rm -f "$TMP_OUTPUT"
-    
+
     echo ""
     echo "=========================================="
     echo "Lint Summary:"
@@ -292,7 +263,7 @@ lint() {
     echo "  Errors: $ERROR_COUNT"
     echo "=========================================="
     echo ""
-    
+
     if [ $ERROR_COUNT -gt 0 ]; then
         echo -e "${RED}✗ Found $ERROR_COUNT error(s)${NC}"
         return 1
@@ -384,111 +355,57 @@ all() {
     echo -e "${GREEN}All tasks completed!${NC}"
 }
 
-# Install dependencies for Ubuntu 24.04
-install() {
-    echo "Installing dependencies for Ubuntu 24.04..."
 
-    # Update package lists
-    sudo apt update
-
-    # Add PPA for g++-14
-    echo "Adding PPA for g++-14..."
-    sudo apt install -y software-properties-common
-    sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
-
-    # Update package lists again after adding PPA
-    sudo apt update
-
-    # Install build tools and zsh
-    echo "Installing build tools..."
-    sudo apt install -y cmake ninja-build build-essential zsh
-
-    # Install clang-format for code formatting
-    echo "Installing clang-format..."
-    sudo apt install -y clang-format
-
-    # Install g++-14
-    echo "Installing g++-14..."
-    sudo apt install -y g++-14
-
-    # Install gdb for debugging
-    echo "Installing gdb for debugging..."
-    sudo apt install -y gdb
-
-    # Install Python for dev tools
-    echo "Installing Python..."
-    sudo apt install -y python3 python3-pip python3-venv
-
-    # Set up project-local Python dev tools
-    echo "Setting up Python dev tools..."
-    ensure_dev_tools
-
-    echo ""
-    echo -e "${GREEN}Dependencies installed successfully!${NC}"
-    echo ""
-    echo "You can now use:"
-    echo "  • dev debug / dev release - Build with debug/release configs"
-    echo "  • dev clean - Clean build artifacts"
-    echo "  • dev format - Format code with clang-format"
-    echo "  • dev lint - Run clang-tidy diagnostics via clangd"
-    echo "  • dev test - Build and run tests"
-    echo "  • dev run [target] - Run an app from src/apps"
-    echo "  • dev all - Build all targets"
-    echo ""
-    echo "Note: Python dev tools are installed in .devtools/venv/ (project-local)"
-    echo ""
-    echo "VS Code debugging is ready! Use F5 to start debugging."
-}
 
 # Comment out the selected lines in settings.json (dev config)
 config() {
     echo "Commenting out files.exclude section in .vscode/settings.json..."
-    
+
     # Find the start line of files.exclude section
     START_LINE=$(grep -n '"files.exclude": {' .vscode/settings.json | cut -d: -f1)
-    
+
     if [ -z "$START_LINE" ]; then
         echo -e "${RED}Could not find files.exclude section in settings.json${NC}"
         exit 1
     fi
-    
+
     # Find the closing brace for files.exclude (next } after the opening)
     END_LINE=$(awk -v start="$START_LINE" 'NR > start && /^[[:space:]]*}/ { print NR; exit }' .vscode/settings.json)
-    
+
     if [ -z "$END_LINE" ]; then
         echo -e "${RED}Could not find closing brace for files.exclude section${NC}"
         exit 1
     fi
-    
+
     # Comment out the files.exclude content (lines after the opening brace) if not already commented
     sed -i "$((START_LINE+1)),$((END_LINE-1)){/^[[:space:]]*\/\/ /!s/^\([[:space:]]*\)/\1\/\/ /;}" .vscode/settings.json
-    
+
     echo -e "${GREEN}Configuration mode activated - build files are now visible in VS Code${NC}"
 }
 
 # Uncomment the selected lines in settings.json (dev focus)
 focus() {
     echo "Uncommenting files.exclude section in .vscode/settings.json..."
-    
+
     # Find the start line of files.exclude section
     START_LINE=$(grep -n '"files.exclude": {' .vscode/settings.json | cut -d: -f1)
-    
+
     if [ -z "$START_LINE" ]; then
         echo -e "${RED}Could not find files.exclude section in settings.json${NC}"
         exit 1
     fi
-    
+
     # Find the closing brace for files.exclude (next } after the opening)
     END_LINE=$(awk -v start="$START_LINE" 'NR > start && /^[[:space:]]*}/ { print NR; exit }' .vscode/settings.json)
-    
+
     if [ -z "$END_LINE" ]; then
         echo -e "${RED}Could not find closing brace for files.exclude section${NC}"
         exit 1
     fi
-    
+
     # Remove comments from the files.exclude content (lines after the opening brace)
     sed -i "$((START_LINE+1)),$((END_LINE-1))s/^\([[:space:]]*\)\/\/ /\1/" .vscode/settings.json
-    
+
     echo -e "${GREEN}Focus mode activated - build files are now hidden in VS Code${NC}"
 }
 
@@ -509,7 +426,6 @@ usage() {
     echo ""
     echo "Run & Dev:"
     echo "  run [target]      - Run an app from src/apps (defaults to the only app if there's just one)"
-    echo "  install           - Install all dependencies (build tools, python, glfw, etc.)"
     echo ""
     echo "VS Code:"
     echo "  focus             - Hide config and build files in VS Code"
@@ -532,7 +448,6 @@ case $1 in
     "lint") lint "$2" ;;
     "run") run "$2" ;;
     "all") all ;;
-    "install") install ;;
     "config") config ;;
     "focus") focus ;;
     *) usage;;
