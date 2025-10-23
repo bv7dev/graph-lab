@@ -12,8 +12,23 @@
 	// "forwardPorts": [],
 
 	"containerEnv": {
-		"XDG_RUNTIME_DIR": "/tmp/runtime-vscode"
+		"XDG_RUNTIME_DIR": "/tmp/runtime-vscode",
+		"DISPLAY": "${localEnv:DISPLAY}",
+		// ensure proper signal handling for debugger
+		"LIBGL_ALWAYS_INDIRECT": "0"
 	},
+
+	// Add ptrace capability for debugging
+	"runArgs": [
+		"--cap-add=SYS_PTRACE",
+		"--security-opt",
+		"seccomp=unconfined"
+	],
+
+	// Ensure X11 forwarding works properly
+	"mounts": [
+		"source=/tmp/.X11-unix,target=/tmp/.X11-unix,type=bind"
+	],
 
 	// Use 'postCreateCommand' to run commands after the container is created.
 	"postCreateCommand": "mkdir -p /tmp/runtime-vscode && chmod 700 /tmp/runtime-vscode && bash ./scripts/setup.sh",

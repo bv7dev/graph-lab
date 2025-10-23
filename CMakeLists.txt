@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.20)
 
+# Suppress deprecation warnings from dependencies
+set(CMAKE_WARN_DEPRECATED OFF CACHE BOOL "Suppress deprecation warnings" FORCE)
+
 project(
     graph-lab
     VERSION 0.1.0
@@ -115,10 +118,10 @@ FetchContent_MakeAvailable(glfw glad doctest glm imgui)
 # ----- Setup external libraries ---------------------------------------------
 
 # Disable strict warnings for GLFW (it has many unused parameters)
-target_compile_options(glfw PRIVATE 
-    -Wno-unused-parameter 
-    -Wno-sign-compare 
-    -Wno-missing-field-initializers 
+target_compile_options(glfw PRIVATE
+    -Wno-unused-parameter
+    -Wno-sign-compare
+    -Wno-missing-field-initializers
     -Wno-pedantic
     -Wno-error
 )
@@ -131,7 +134,7 @@ file(MAKE_DIRECTORY ${GLAD_OUTPUT_DIR})
 if(NOT EXISTS "${GLAD_OUTPUT_DIR}/src/glad.c" OR NOT EXISTS "${GLAD_OUTPUT_DIR}/include/glad/glad.h")
     # Only find Python when we need to generate GLAD files
     find_package(Python3 REQUIRED COMPONENTS Interpreter)
-    
+
     message(STATUS "Generating GLAD files...")
     execute_process(
         COMMAND ${Python3_EXECUTABLE} -m glad --generator=c --spec=gl --api=gl=3.3 --profile=core --out-path=${GLAD_OUTPUT_DIR}
@@ -178,7 +181,7 @@ add_library(imgui_lib
     ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
 )
 
-target_include_directories(imgui_lib PUBLIC 
+target_include_directories(imgui_lib PUBLIC
     ${imgui_SOURCE_DIR}
     ${imgui_SOURCE_DIR}/backends
 )
@@ -186,9 +189,9 @@ target_include_directories(imgui_lib PUBLIC
 target_link_libraries(imgui_lib PUBLIC glfw glad_generated)
 
 # Disable strict warnings for ImGui
-target_compile_options(imgui_lib PRIVATE 
-    -Wno-unused-parameter 
-    -Wno-sign-compare 
+target_compile_options(imgui_lib PRIVATE
+    -Wno-unused-parameter
+    -Wno-sign-compare
     -Wno-missing-field-initializers
     -Wno-pedantic
     -Wno-error
@@ -223,27 +226,27 @@ set(APP_EXECUTABLES)
 foreach(APP_SOURCE ${APP_SOURCES})
     # Get the filename without extension (e.g., demo3d.cpp -> demo3d)
     get_filename_component(APP_NAME ${APP_SOURCE} NAME_WE)
-    
+
     message(STATUS "Configuring application: ${APP_NAME}")
-    
+
     # Create executable for this app
     add_executable(${APP_NAME}
         ${APP_SOURCE}
         ${LIBRARY_SOURCES}
     )
-    
+
     # Include directories
     target_include_directories(${APP_NAME} PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/include
         ${glfw_SOURCE_DIR}/include
         ${GLAD_OUTPUT_DIR}/include
     )
-    
+
     # Apply strict compiler flags
-    target_compile_options(${APP_NAME} PRIVATE 
+    target_compile_options(${APP_NAME} PRIVATE
         -Wall -Wextra -Wpedantic -Werror
     )
-    
+
     # Link libraries
     target_link_libraries(${APP_NAME} PRIVATE
         OpenGL::GL
@@ -252,12 +255,12 @@ foreach(APP_SOURCE ${APP_SOURCES})
         imgui_lib
         glfw
     )
-    
+
     # Set C++ standard
-    target_compile_features(${APP_NAME} PRIVATE 
+    target_compile_features(${APP_NAME} PRIVATE
         cxx_std_23
     )
-    
+
     # Add to list of executables for installation
     list(APPEND APP_EXECUTABLES ${APP_NAME})
 endforeach()
@@ -272,7 +275,7 @@ if(BUILD_TESTS)
 
     # Automatically discover and build all test executables in tests/
     file(GLOB TEST_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_*.cpp")
-    
+
     if(NOT TEST_SOURCES)
         message(WARNING "No test source files found in tests/")
     endif()
@@ -283,23 +286,23 @@ if(BUILD_TESTS)
     foreach(TEST_SOURCE ${TEST_SOURCES})
         # Get the filename without extension (e.g., test_math.cpp -> test_math)
         get_filename_component(TEST_NAME ${TEST_SOURCE} NAME_WE)
-        
+
         message(STATUS "Configuring test: ${TEST_NAME}")
-        
+
         # Create executable for this test
         add_executable(${TEST_NAME}
             ${TEST_SOURCE}
             ${LIBRARY_SOURCES}
         )
-        
+
         # Include directories
-        target_include_directories(${TEST_NAME} PRIVATE 
+        target_include_directories(${TEST_NAME} PRIVATE
             ${CMAKE_CURRENT_SOURCE_DIR}/include
             ${doctest_SOURCE_DIR}/doctest
             ${glfw_SOURCE_DIR}/include
             ${GLAD_OUTPUT_DIR}/include
         )
-        
+
         # Link libraries
         target_link_libraries(${TEST_NAME} PRIVATE
             doctest::doctest
@@ -309,18 +312,18 @@ if(BUILD_TESTS)
             imgui_lib
             glfw
         )
-        
+
         # Set C++ standard
-        target_compile_features(${TEST_NAME} PRIVATE 
+        target_compile_features(${TEST_NAME} PRIVATE
             cxx_std_23
         )
-        
+
         # Register test with CTest
         add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
-        
+
         # Add to list of test executables
         list(APPEND TEST_EXECUTABLES ${TEST_NAME})
     endforeach()
-    
+
     message(STATUS "Test executables: ${TEST_EXECUTABLES}")
 endif()
